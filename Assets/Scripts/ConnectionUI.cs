@@ -1,7 +1,7 @@
-using TMPro;
+ï»¿using TMPro;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class ConnectionUI : MonoBehaviour
 {
@@ -13,8 +13,9 @@ public class ConnectionUI : MonoBehaviour
     public void StartAsHost()
     {
         SaveNickname();
+        ReleaseInputFieldFocus();
         NetworkManager.Singleton.StartHost();
-                                             
+
         if (_menuPanel != null)
             _menuPanel.SetActive(false);
     }
@@ -22,7 +23,9 @@ public class ConnectionUI : MonoBehaviour
     public void StartAsClient()
     {
         SaveNickname();
-        NetworkManager.Singleton.StartClient(); 
+        ReleaseInputFieldFocus();
+        NetworkManager.Singleton.StartClient();
+
         if (_menuPanel != null)
             _menuPanel.SetActive(false);
     }
@@ -31,23 +34,19 @@ public class ConnectionUI : MonoBehaviour
     {
         string rawValue = _nicknameInput != null ? _nicknameInput.text : string.Empty;
         PlayerNickname = string.IsNullOrWhiteSpace(rawValue) ? "Player" : rawValue.Trim();
-        Debug.Log($"Nickname saved: {PlayerNickname}"); 
+        Debug.Log($"Nickname saved: {PlayerNickname}");
     }
 
-    private Mouse _mouse;
-    void Start()
+    private void ReleaseInputFieldFocus()
     {
-        _mouse = Mouse.current;
-    }
-
-    void Update()
-    {
-        if (_mouse != null)
+        if (_nicknameInput != null)
         {
-            if (Keyboard.current.hKey.wasPressedThisFrame)
-                StartAsHost();
-            if (Keyboard.current.cKey.wasPressedThisFrame)
-                StartAsClient();
+            _nicknameInput.DeactivateInputField();
+        }
+
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
         }
     }
 
@@ -56,12 +55,10 @@ public class ConnectionUI : MonoBehaviour
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.Shutdown();
 
-        Debug.Log("Âûõîä èç èãðû");
-
+        Debug.Log("Ð’Ñ‹Ñ…Ð¾Ð´ Ð¸Ð· Ð¸Ð³Ñ€Ñ‹");
         Application.Quit();
 
 #if UNITY_EDITOR
-
         UnityEditor.EditorApplication.isPlaying = false;
 #endif
     }
