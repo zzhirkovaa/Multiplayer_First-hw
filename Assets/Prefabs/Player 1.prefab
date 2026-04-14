@@ -524,7 +524,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 634614069
+  GlobalObjectIdHash: 2968941715
   InScenePlacedSourceGlobalObjectIdHash: 3735801431
   DeferredDespawnTick: 0
   Ownership: 1
@@ -736,7 +736,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   ShowTopMostFoldoutHeaderGroup: 1
-  _speed: 25
+  _speed: 15
   _gravity: -9.81
 --- !u!114 &1997939478060145911
 MonoBehaviour:
@@ -767,8 +767,13 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   _projectilePrefab: {fileID: 4297994221449975165, guid: ff274a56b92a7c441b53ac7322ad788b, type: 3}
   _firePoint: {fileID: 6823854888262412051}
-  _cooldown: 0.4
+  _cooldown: 0.7
   _maxAmmo: 10
+  CurrentAmmo:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 10
 --- !u!114 &-3221673585330095088
 MonoBehaviour:
   m_ObjectHideFlags: 0

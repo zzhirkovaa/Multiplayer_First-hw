@@ -27,13 +27,39 @@ public class PlayerMovement : NetworkBehaviour
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        Vector3 move = new Vector3(h, 0f, v).normalized * _speed;
+        Camera cam = Camera.main;
+
+        Vector3 move;
+
+        if (cam != null)
+        {
+            Vector3 forward = cam.transform.forward;
+            Vector3 right = cam.transform.right;
+
+            forward.y = 0f;
+            right.y = 0f;
+
+            forward.Normalize();
+            right.Normalize();
+
+            move = (forward * v + right * h).normalized * _speed;
+        }
+        else
+        {
+            move = new Vector3(h, 0f, v).normalized * _speed;
+        }
 
         _verticalVelocity += _gravity * Time.deltaTime;
         move.y = _verticalVelocity;
 
         _cc.Move(move * Time.deltaTime);
 
-        if (_cc.isGrounded) _verticalVelocity = 0f;
+        if (_cc.isGrounded)
+            _verticalVelocity = 0f;
+    }
+
+    public void ResetMotion()
+    {
+        _verticalVelocity = 0f;
     }
 }

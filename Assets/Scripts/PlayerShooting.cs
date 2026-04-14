@@ -9,25 +9,34 @@ public class PlayerShooting : NetworkBehaviour
     [SerializeField] private int _maxAmmo = 10;
 
     private float _lastShotTime;
-    private int _currentAmmo;
-    public int CurrentAmmo => _currentAmmo;
+
+    public NetworkVariable<int> CurrentAmmo = new NetworkVariable<int>(
+        10,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     private PlayerNetwork _playerNetwork;
 
     public override void OnNetworkSpawn()
     {
-        _currentAmmo = _maxAmmo;
         _playerNetwork = GetComponent<PlayerNetwork>();
+
+        if (IsServer)
+        {
+            CurrentAmmo.Value = _maxAmmo;
+        }
     }
 
     private void Update()
     {
         if (!IsOwner) return;
-
-        // Мёртвый игрок не стреляет
         if (_playerNetwork != null && !_playerNetwork.IsAlive.Value) return;
 
         if (Input.GetKeyDown(KeyCode.Space))
+        {
             ShootServerRpc(_firePoint.position, _firePoint.forward);
+        }
     }
 
     [ServerRpc]
@@ -40,18 +49,19 @@ public class PlayerShooting : NetworkBehaviour
 
         var playerObject = NetworkManager.ConnectedClients[senderId].PlayerObject;
         var playerNetwork = playerObject.GetComponent<PlayerNetwork>();
+        var playerShooting = playerObject.GetComponent<PlayerShooting>();
 
-        // 1. Жив ли игрок?
+        // Жив ли игрок?
         if (!playerNetwork.IsAlive.Value) return;
 
-        // 2. Есть ли патроны?
-        if (_currentAmmo <= 0) return;
+        // Есть ли патроны?
+        if (playerShooting.CurrentAmmo.Value <= 0) return;
 
-        // 3. Прошёл ли кулдаун?
+        // Прошёл ли кулдаун?
         if (Time.time < _lastShotTime + _cooldown) return;
 
         _lastShotTime = Time.time;
-        _currentAmmo--;
+        playerShooting.CurrentAmmo.Value--;
 
         var go = Instantiate(_projectilePrefab, pos + dir * 1.2f, Quaternion.LookRotation(dir));
         var no = go.GetComponent<NetworkObject>();

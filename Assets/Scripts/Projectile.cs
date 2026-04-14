@@ -19,7 +19,6 @@ public class Projectile : NetworkBehaviour
         PlayerNetwork target = other.GetComponent<PlayerNetwork>();
         if (target == null) return;
 
-        // Не наносим урон самому себе
         if (target.OwnerClientId == OwnerClientId) return;
 
         int newHp = Mathf.Max(0, target.HP.Value - _damage);

@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using Unity.Netcode.Components;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using System.Collections;
@@ -53,7 +54,7 @@ public class PlayerNetwork : NetworkBehaviour
 
     private void OnHpChanged(int prev, int next)
     {
-        // Только сервер запускает цикл смерти
+
         if (!IsServer) return;
 
         if (next <= 0 && IsAlive.Value)
@@ -74,7 +75,15 @@ public class PlayerNetwork : NetworkBehaviour
             respawnPosition = SpawnManager.Instance.GetSpawnPosition();
         }
 
-        transform.position = respawnPosition;
+        RespawnOwnerClientRpc(respawnPosition, new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams
+            {
+                TargetClientIds = new[] { OwnerClientId }
+            }
+        });
+
+        yield return null;
 
         HP.Value = 100;
         IsAlive.Value = true;
@@ -89,4 +98,36 @@ public class PlayerNetwork : NetworkBehaviour
             renderer.enabled = next;
         }
     }
+
+    [ClientRpc]
+    private void RespawnOwnerClientRpc(Vector3 respawnPosition, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner)
+            return;
+
+        CharacterController cc = GetComponent<CharacterController>();
+        NetworkTransform networkTransform = GetComponent<NetworkTransform>();
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+
+        if (movement != null)
+        {
+            movement.ResetMotion();
+        }
+
+        if (cc != null)
+            cc.enabled = false;
+
+        if (networkTransform != null)
+        {
+            networkTransform.Teleport(respawnPosition, transform.rotation, transform.localScale);
+        }
+        else
+        {
+            transform.position = respawnPosition;
+        }
+
+        if (cc != null)
+            cc.enabled = true;
+    }
+
 }

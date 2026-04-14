@@ -24,7 +24,6 @@ public class PlayerHUD : NetworkBehaviour
         _playerShooting = GetComponent<PlayerShooting>();
         _playerNetwork = GetComponent<PlayerNetwork>();
 
-        // ИЩЕМ UI НА СЦЕНЕ
         _ammoText = GameObject.Find("AmmoText")?.GetComponent<TMP_Text>();
         _respawnText = GameObject.Find("RespawnText")?.GetComponent<TMP_Text>();
 
@@ -35,6 +34,12 @@ public class PlayerHUD : NetworkBehaviour
 
         if (_respawnText != null)
             _respawnText.gameObject.SetActive(false);
+
+        // Сразу показать стартовые патроны
+        if (_ammoText != null && _playerShooting != null)
+        {
+            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo.Value}";
+        }
     }
 
     public override void OnNetworkDespawn()
@@ -51,7 +56,7 @@ public class PlayerHUD : NetworkBehaviour
 
         if (_playerShooting != null && _ammoText != null)
         {
-            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo}";
+            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo.Value}";
         }
 
         if (_countRespawn && _respawnText != null)
@@ -62,7 +67,9 @@ public class PlayerHUD : NetworkBehaviour
             _respawnText.text = $"Возрождение через: {Mathf.Max(0, secondsLeft)}";
 
             if (_respawnTimer <= 0f)
+            {
                 _countRespawn = false;
+            }
         }
     }
 
@@ -76,14 +83,19 @@ public class PlayerHUD : NetworkBehaviour
             _countRespawn = true;
 
             if (_respawnText != null)
+            {
                 _respawnText.gameObject.SetActive(true);
+                _respawnText.text = "Возрождение через: 3";
+            }
         }
         else
         {
             _countRespawn = false;
 
             if (_respawnText != null)
+            {
                 _respawnText.gameObject.SetActive(false);
+            }
         }
     }
 }
