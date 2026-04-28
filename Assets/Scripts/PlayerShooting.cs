@@ -1,4 +1,5 @@
-using Unity.Netcode;
+п»їusing FishNet.Object;
+using FishNet.Object.Synchronizing;
 using UnityEngine;
 
 public class PlayerShooting : NetworkBehaviour
@@ -8,30 +9,20 @@ public class PlayerShooting : NetworkBehaviour
     [SerializeField] private float _cooldown = 0.4f;
     [SerializeField] private int _maxAmmo = 10;
 
+    public readonly SyncVar<int> CurrentAmmo = new(10);
+
     private float _lastShotTime;
 
-    public NetworkVariable<int> CurrentAmmo = new NetworkVariable<int>(
-        10,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-    private PlayerNetwork _playerNetwork;
-
-    public override void OnNetworkSpawn()
+    public override void OnStartServer()
     {
-        _playerNetwork = GetComponent<PlayerNetwork>();
-
-        if (IsServer)
-        {
-            CurrentAmmo.Value = _maxAmmo;
-        }
+        base.OnStartServer();
+        CurrentAmmo.Value = _maxAmmo;
     }
 
     private void Update()
     {
-        if (!IsOwner) return;
-        if (_playerNetwork != null && !_playerNetwork.IsAlive.Value) return;
+        if (!base.IsOwner)
+            return;
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -40,31 +31,29 @@ public class PlayerShooting : NetworkBehaviour
     }
 
     [ServerRpc]
-    private void ShootServerRpc(Vector3 pos, Vector3 dir, ServerRpcParams rpc = default)
+    private void ShootServerRpc(Vector3 position, Vector3 direction)
     {
-        ulong senderId = rpc.Receive.SenderClientId;
-
-        if (!NetworkManager.ConnectedClients.ContainsKey(senderId))
+        if (CurrentAmmo.Value <= 0)
             return;
 
-        var playerObject = NetworkManager.ConnectedClients[senderId].PlayerObject;
-        var playerNetwork = playerObject.GetComponent<PlayerNetwork>();
-        var playerShooting = playerObject.GetComponent<PlayerShooting>();
-
-        // Жив ли игрок?
-        if (!playerNetwork.IsAlive.Value) return;
-
-        // Есть ли патроны?
-        if (playerShooting.CurrentAmmo.Value <= 0) return;
-
-        // Прошёл ли кулдаун?
-        if (Time.time < _lastShotTime + _cooldown) return;
+        if (Time.time < _lastShotTime + _cooldown)
+            return;
 
         _lastShotTime = Time.time;
-        playerShooting.CurrentAmmo.Value--;
+        CurrentAmmo.Value--;
 
-        var go = Instantiate(_projectilePrefab, pos + dir * 1.2f, Quaternion.LookRotation(dir));
-        var no = go.GetComponent<NetworkObject>();
-        no.SpawnWithOwnership(senderId);
+        GameObject projectileObject = Instantiate(
+            _projectilePrefab,
+            position + direction.normalized * 1.2f,
+            Quaternion.LookRotation(direction)
+        );
+
+        Projectile projectile = projectileObject.GetComponent<Projectile>();
+        if (projectile != null)
+        {
+            projectile.Init(OwnerId);
+        }
+
+        ServerManager.Spawn(projectileObject);
     }
 }

@@ -1,10 +1,17 @@
-using Unity.Netcode;
+using FishNet.Object;
 using UnityEngine;
 
 public class Projectile : NetworkBehaviour
 {
     [SerializeField] private float _speed = 18f;
     [SerializeField] private int _damage = 20;
+
+    private int _ownerId = -1;
+
+    public void Init(int ownerId)
+    {
+        _ownerId = ownerId;
+    }
 
     private void Update()
     {
@@ -13,17 +20,17 @@ public class Projectile : NetworkBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!IsServer) return;
-        if (!IsSpawned) return;
+        if (!base.IsServerInitialized)
+            return;
 
         PlayerNetwork target = other.GetComponent<PlayerNetwork>();
-        if (target == null) return;
+        if (target == null)
+            return;
 
-        if (target.OwnerClientId == OwnerClientId) return;
+        if (target.OwnerId == _ownerId)
+            return;
 
-        int newHp = Mathf.Max(0, target.HP.Value - _damage);
-        target.HP.Value = newHp;
-
-        NetworkObject.Despawn(true);
+        target.TakeDamage(_damage);
+        ServerManager.Despawn(gameObject);
     }
 }

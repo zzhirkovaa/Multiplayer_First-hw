@@ -1,29 +1,31 @@
-using Unity.Netcode;
+using FishNet.Object;
 using UnityEngine;
 
 public class PlayerCamera : NetworkBehaviour
 {
     [SerializeField] private Vector3 _offset = new Vector3(0f, 8f, -6f);
 
-    private Camera _cam;
+    private Camera _camera;
 
-    public override void OnNetworkSpawn()
+    public override void OnStartClient()
     {
-        if (!IsOwner)
+        base.OnStartClient();
+
+        if (!base.IsOwner)
         {
             enabled = false;
             return;
         }
 
-        _cam = Camera.main;
+        _camera = Camera.main;
     }
 
     private void LateUpdate()
     {
-        if (_cam == null)
+        if (_camera == null)
             return;
 
-        _cam.transform.position = transform.position + _offset;
-        _cam.transform.LookAt(transform.position);
+        _camera.transform.position = transform.position + _offset;
+        _camera.transform.LookAt(transform.position);
     }
 }

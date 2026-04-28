@@ -1,101 +1,41 @@
+п»їusing FishNet.Object;
 using TMPro;
-using Unity.Netcode;
 using UnityEngine;
 
 public class PlayerHUD : NetworkBehaviour
 {
     private TMP_Text _ammoText;
-    private TMP_Text _respawnText;
-
     private PlayerShooting _playerShooting;
-    private PlayerNetwork _playerNetwork;
 
-    private float _respawnTimer = 0f;
-    private bool _countRespawn = false;
-
-    public override void OnNetworkSpawn()
+    public override void OnStartClient()
     {
-        if (!IsOwner)
+        base.OnStartClient();
+
+        if (!base.IsOwner)
         {
             enabled = false;
             return;
         }
 
         _playerShooting = GetComponent<PlayerShooting>();
-        _playerNetwork = GetComponent<PlayerNetwork>();
-
         _ammoText = GameObject.Find("AmmoText")?.GetComponent<TMP_Text>();
-        _respawnText = GameObject.Find("RespawnText")?.GetComponent<TMP_Text>();
 
-        if (_playerNetwork != null)
-        {
-            _playerNetwork.IsAlive.OnValueChanged += OnIsAliveChanged;
-        }
-
-        if (_respawnText != null)
-            _respawnText.gameObject.SetActive(false);
-
-        // Сразу показать стартовые патроны
-        if (_ammoText != null && _playerShooting != null)
-        {
-            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo.Value}";
-        }
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        if (_playerNetwork != null)
-        {
-            _playerNetwork.IsAlive.OnValueChanged -= OnIsAliveChanged;
-        }
+        UpdateAmmoText();
     }
 
     private void Update()
     {
-        if (!IsOwner) return;
+        if (!base.IsOwner)
+            return;
 
-        if (_playerShooting != null && _ammoText != null)
-        {
-            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo.Value}";
-        }
-
-        if (_countRespawn && _respawnText != null)
-        {
-            _respawnTimer -= Time.deltaTime;
-
-            int secondsLeft = Mathf.CeilToInt(_respawnTimer);
-            _respawnText.text = $"Возрождение через: {Mathf.Max(0, secondsLeft)}";
-
-            if (_respawnTimer <= 0f)
-            {
-                _countRespawn = false;
-            }
-        }
+        UpdateAmmoText();
     }
 
-    private void OnIsAliveChanged(bool prev, bool next)
+    private void UpdateAmmoText()
     {
-        if (!IsOwner) return;
-
-        if (!next)
+        if (_ammoText != null && _playerShooting != null)
         {
-            _respawnTimer = 3f;
-            _countRespawn = true;
-
-            if (_respawnText != null)
-            {
-                _respawnText.gameObject.SetActive(true);
-                _respawnText.text = "Возрождение через: 3";
-            }
-        }
-        else
-        {
-            _countRespawn = false;
-
-            if (_respawnText != null)
-            {
-                _respawnText.gameObject.SetActive(false);
-            }
+            _ammoText.text = $"Ammo: {_playerShooting.CurrentAmmo.Value}";
         }
     }
 }

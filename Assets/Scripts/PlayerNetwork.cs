@@ -1,133 +1,97 @@
-﻿using Unity.Netcode.Components;
-using Unity.Collections;
-using Unity.Netcode;
+using FishNet.Object;
+using FishNet.Object.Synchronizing;
+using TMPro;
 using UnityEngine;
-using System.Collections;
 
 public class PlayerNetwork : NetworkBehaviour
 {
-    public NetworkVariable<FixedString32Bytes> Nickname = new NetworkVariable<FixedString32Bytes>(
-        new FixedString32Bytes("Player"),
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    public readonly SyncVar<int> HP = new(100);
 
-    public NetworkVariable<int> HP = new NetworkVariable<int>(
-        100,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    public readonly SyncVar<string> Nickname = new("Player");
 
-    public NetworkVariable<bool> IsAlive = new NetworkVariable<bool>(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    [SerializeField] private TMP_Text _hpText;
+    [SerializeField] private TMP_Text _nicknameText;
+    [SerializeField] private PlayerView _playerView;
 
-    public override void OnNetworkSpawn()
+    private void Awake()
     {
-        if (IsOwner)
+        HP.OnChange += OnHpChanged;
+        Nickname.OnChange += OnNicknameChanged;
+    }
+
+    private void OnDestroy()
+    {
+        HP.OnChange -= OnHpChanged;
+        Nickname.OnChange -= OnNicknameChanged;
+    }
+
+    public override void OnStartNetwork()
+    {
+        base.OnStartNetwork();
+
+        if (base.Owner.IsLocalClient)
         {
-            SubmitNicknameServerRpc(ConnectionUI.PlayerNickname);
+            SetNicknameServerRpc(ConnectionUI.PlayerNickname);
         }
 
-        HP.OnValueChanged += OnHpChanged;
-        IsAlive.OnValueChanged += OnIsAliveChanged;
+        UpdateHpText(HP.Value);
+        UpdateNicknameText(Nickname.Value);
     }
 
-    public override void OnNetworkDespawn()
+    public override void OnStopNetwork()
     {
-        HP.OnValueChanged -= OnHpChanged;
-        IsAlive.OnValueChanged -= OnIsAliveChanged;
+        base.OnStopNetwork();
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    private void SubmitNicknameServerRpc(string nickname)
+    [ServerRpc]
+    public void SetNicknameServerRpc(string nickname)
     {
-        string safeValue = string.IsNullOrWhiteSpace(nickname)
-            ? $"Player_{OwnerClientId}"
+        Nickname.Value = string.IsNullOrWhiteSpace(nickname)
+            ? $"Player{OwnerId}"
             : nickname.Trim();
-
-        Nickname.Value = safeValue;
-        gameObject.name = safeValue;
     }
 
-    private void OnHpChanged(int prev, int next)
+    public void TakeDamage(int damage)
     {
-
-        if (!IsServer) return;
-
-        if (next <= 0 && IsAlive.Value)
-        {
-            IsAlive.Value = false;
-            StartCoroutine(RespawnRoutine());
-        }
-    }
-
-    private IEnumerator RespawnRoutine()
-    {
-        yield return new WaitForSeconds(3f);
-
-        Vector3 respawnPosition = Vector3.zero;
-
-        if (SpawnManager.Instance != null)
-        {
-            respawnPosition = SpawnManager.Instance.GetSpawnPosition();
-        }
-
-        RespawnOwnerClientRpc(respawnPosition, new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams
-            {
-                TargetClientIds = new[] { OwnerClientId }
-            }
-        });
-
-        yield return null;
-
-        HP.Value = 100;
-        IsAlive.Value = true;
-    }
-
-    private void OnIsAliveChanged(bool prev, bool next)
-    {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
-
-        foreach (Renderer renderer in renderers)
-        {
-            renderer.enabled = next;
-        }
-    }
-
-    [ClientRpc]
-    private void RespawnOwnerClientRpc(Vector3 respawnPosition, ClientRpcParams clientRpcParams = default)
-    {
-        if (!IsOwner)
+        if (!base.IsServerInitialized)
             return;
 
-        CharacterController cc = GetComponent<CharacterController>();
-        NetworkTransform networkTransform = GetComponent<NetworkTransform>();
-        PlayerMovement movement = GetComponent<PlayerMovement>();
-
-        if (movement != null)
-        {
-            movement.ResetMotion();
-        }
-
-        if (cc != null)
-            cc.enabled = false;
-
-        if (networkTransform != null)
-        {
-            networkTransform.Teleport(respawnPosition, transform.rotation, transform.localScale);
-        }
-        else
-        {
-            transform.position = respawnPosition;
-        }
-
-        if (cc != null)
-            cc.enabled = true;
+        HP.Value = Mathf.Max(0, HP.Value - damage);
     }
 
+    private void OnHpChanged(int oldValue, int newValue, bool asServer)
+    {
+        UpdateHpText(newValue);
+    }
+
+    private void OnNicknameChanged(string oldValue, string newValue, bool asServer)
+    {
+        UpdateNicknameText(newValue);
+    }
+
+    private void UpdateHpText(int value)
+    {
+        if (_hpText != null)
+        {
+            _hpText.text = $"HP: {value}";
+        }
+
+        if (_playerView != null)
+        {
+            _playerView.SetHp(value);
+        }
+    }
+
+    private void UpdateNicknameText(string value)
+    {
+        if (_nicknameText != null)
+        {
+            _nicknameText.text = value;
+        }
+
+        if (_playerView != null)
+        {
+            _playerView.SetNickname(value);
+        }
+    }
 }
