@@ -25,6 +25,12 @@ public class Projectile : NetworkBehaviour
 
         PlayerNetwork target = other.GetComponent<PlayerNetwork>();
         if (target == null)
+            target = other.GetComponentInParent<PlayerNetwork>();
+
+        if (target == null)
+            return;
+
+        if (!target.IsAlive.Value)
             return;
 
         if (target.OwnerId == _ownerId)

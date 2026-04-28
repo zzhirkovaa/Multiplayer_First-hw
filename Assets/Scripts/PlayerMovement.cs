@@ -54,11 +54,13 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private float _gravity = -9.81f;
 
     private CharacterController _characterController;
+    private PlayerNetwork _playerNetwork;
     private float _verticalVelocity;
 
     private void Awake()
     {
         _characterController = GetComponent<CharacterController>();
+        _playerNetwork = GetComponent<PlayerNetwork>();
     }
 
     public override void OnStartNetwork()
@@ -77,10 +79,12 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (base.IsOwner)
         {
+            bool canMove = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+
             MoveData moveData = new MoveData
             {
-                Horizontal = Input.GetAxisRaw("Horizontal"),
-                Vertical = Input.GetAxisRaw("Vertical")
+                Horizontal = canMove ? Input.GetAxisRaw("Horizontal") : 0f,
+                Vertical = canMove ? Input.GetAxisRaw("Vertical") : 0f
             };
 
             Move(moveData);
@@ -109,7 +113,10 @@ public class PlayerMovement : NetworkBehaviour
     {
         float tickDelta = (float)base.TimeManager.TickDelta;
 
-        Vector3 move = GetCameraRelativeMove(moveData.Horizontal, moveData.Vertical);
+        bool canMove = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+        Vector3 move = canMove
+            ? GetCameraRelativeMove(moveData.Horizontal, moveData.Vertical)
+            : Vector3.zero;
 
         _verticalVelocity += _gravity * tickDelta;
         move.y = _verticalVelocity;

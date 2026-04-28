@@ -11,7 +11,13 @@ public class PlayerShooting : NetworkBehaviour
 
     public readonly SyncVar<int> CurrentAmmo = new(10);
 
+    private PlayerNetwork _playerNetwork;
     private float _lastShotTime;
+
+    private void Awake()
+    {
+        _playerNetwork = GetComponent<PlayerNetwork>();
+    }
 
     public override void OnStartServer()
     {
@@ -24,6 +30,12 @@ public class PlayerShooting : NetworkBehaviour
         if (!base.IsOwner)
             return;
 
+        if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
+            return;
+
+        if (_firePoint == null)
+            return;
+
         if (Input.GetKeyDown(KeyCode.Space))
         {
             ShootServerRpc(_firePoint.position, _firePoint.forward);
@@ -33,6 +45,18 @@ public class PlayerShooting : NetworkBehaviour
     [ServerRpc]
     private void ShootServerRpc(Vector3 position, Vector3 direction)
     {
+        if (_playerNetwork == null)
+            _playerNetwork = GetComponent<PlayerNetwork>();
+
+        if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
+            return;
+
+        if (_projectilePrefab == null)
+            return;
+
+        if (direction.sqrMagnitude <= 0.001f)
+            return;
+
         if (CurrentAmmo.Value <= 0)
             return;
 
