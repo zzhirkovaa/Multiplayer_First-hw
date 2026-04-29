@@ -79,7 +79,7 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (base.IsOwner)
         {
-            bool canMove = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+            bool canMove = CanMove();
 
             MoveData moveData = new MoveData
             {
@@ -114,6 +114,7 @@ public class PlayerMovement : NetworkBehaviour
         float tickDelta = (float)base.TimeManager.TickDelta;
 
         bool canMove = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+        canMove = canMove && IsMatchInProgress();
         Vector3 move = canMove
             ? GetCameraRelativeMove(moveData.Horizontal, moveData.Vertical)
             : Vector3.zero;
@@ -143,6 +144,17 @@ public class PlayerMovement : NetworkBehaviour
     public void ResetMotion()
     {
         _verticalVelocity = 0f;
+    }
+
+    private bool CanMove()
+    {
+        bool alive = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+        return alive && IsMatchInProgress();
+    }
+
+    private bool IsMatchInProgress()
+    {
+        return GameManager.Instance == null || GameManager.Instance.IsMatchInProgress;
     }
 
     private Vector3 GetCameraRelativeMove(float horizontal, float vertical)

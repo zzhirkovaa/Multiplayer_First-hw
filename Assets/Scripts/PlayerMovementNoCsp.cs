@@ -22,7 +22,7 @@ public class PlayerMovementNoCsp : NetworkBehaviour
         if (!base.IsOwner)
             return;
 
-        if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
+        if (!CanMove())
             return;
 
         float horizontal = Input.GetAxisRaw("Horizontal");
@@ -37,7 +37,7 @@ public class PlayerMovementNoCsp : NetworkBehaviour
         if (_playerNetwork == null)
             _playerNetwork = GetComponent<PlayerNetwork>();
 
-        if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
+        if (!CanMove())
             return;
 
         float delta = Time.deltaTime;
@@ -50,5 +50,12 @@ public class PlayerMovementNoCsp : NetworkBehaviour
 
         if (_characterController.isGrounded && _verticalVelocity < 0f)
             _verticalVelocity = 0f;
+    }
+
+    private bool CanMove()
+    {
+        bool alive = _playerNetwork == null || _playerNetwork.IsAlive.Value;
+        bool matchInProgress = GameManager.Instance == null || GameManager.Instance.IsMatchInProgress;
+        return alive && matchInProgress;
     }
 }

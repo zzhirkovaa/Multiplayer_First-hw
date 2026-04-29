@@ -33,6 +33,9 @@ public class PlayerShooting : NetworkBehaviour
         if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
             return;
 
+        if (GameManager.Instance != null && !GameManager.Instance.IsMatchInProgress)
+            return;
+
         if (_firePoint == null)
             return;
 
@@ -49,6 +52,9 @@ public class PlayerShooting : NetworkBehaviour
             _playerNetwork = GetComponent<PlayerNetwork>();
 
         if (_playerNetwork != null && !_playerNetwork.IsAlive.Value)
+            return;
+
+        if (GameManager.Instance != null && !GameManager.Instance.IsMatchInProgress)
             return;
 
         if (_projectilePrefab == null)
