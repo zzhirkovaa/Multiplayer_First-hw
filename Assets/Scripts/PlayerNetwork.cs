@@ -8,6 +8,7 @@ using UnityEngine;
 public class PlayerNetwork : NetworkBehaviour
 {
     public const int MaxHP = 100;
+    public const float RespawnDelay = 3f;
 
     public readonly SyncVar<int> HP = new(MaxHP);
     public readonly SyncVar<string> Nickname = new("Player");
@@ -117,7 +118,7 @@ public class PlayerNetwork : NetworkBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(RespawnDelay);
 
         Vector3 respawnPosition = SpawnManager.Instance != null
             ? SpawnManager.Instance.GetSpawnPosition()
