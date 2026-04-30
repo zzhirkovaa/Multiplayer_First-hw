@@ -4,6 +4,7 @@ using FishNet.Broadcast;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using FishNet.Transporting;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,7 +30,9 @@ public class GameManager : NetworkBehaviour
 
     public int RequiredPlayers => _requiredPlayers;
     public static GameManager Instance { get; private set; }
-    public bool IsMatchInProgress => CurrentState.Value == GameState.InProgress;
+    public bool IsMatchInProgress => base.IsServerInitialized
+        ? CurrentState.Value == GameState.InProgress
+        : _displayState == GameState.InProgress;
 
     private bool _serverEventsSubscribed;
     private GameObject _runtimePanel;
@@ -225,6 +228,7 @@ public class GameManager : NetworkBehaviour
                     : Vector3.zero;
 
                 playerNetwork.ResetPlayerServer(spawnPosition);
+                playerNetwork.ResetScoreServer();
             }
         }
     }
@@ -283,10 +287,42 @@ public class GameManager : NetworkBehaviour
             ConnectedPlayers = ConnectedPlayers.Value,
             RequiredPlayers = _requiredPlayers,
             MatchTimer = MatchTimer.Value,
-            ResultsText = "Match ended. Returning to lobby..."
+            ResultsText = CurrentState.Value == GameState.ShowingResults
+                ? BuildResultsText()
+                : "Match ended. Returning to lobby..."
         };
 
         base.ServerManager.Broadcast(message, false, Channel.Reliable);
+    }
+
+    private string BuildResultsText()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("Results");
+
+        bool hasPlayers = false;
+        foreach (NetworkConnection connection in base.ServerManager.Clients.Values)
+        {
+            foreach (NetworkObject networkObject in connection.Objects)
+            {
+                PlayerNetwork playerNetwork = networkObject.GetComponent<PlayerNetwork>();
+                if (playerNetwork == null)
+                    continue;
+
+                hasPlayers = true;
+                string nickname = string.IsNullOrWhiteSpace(playerNetwork.Nickname.Value)
+                    ? $"Player{playerNetwork.OwnerId}"
+                    : playerNetwork.Nickname.Value;
+
+                builder.AppendLine($"{nickname}: {playerNetwork.Score.Value}");
+            }
+        }
+
+        if (!hasPlayers)
+            builder.AppendLine("No players");
+
+        builder.AppendLine("Returning to lobby...");
+        return builder.ToString();
     }
 
     private void CopyNetworkStateToDisplayState()
@@ -348,17 +384,26 @@ public class GameManager : NetworkBehaviour
         if (_displayState == GameState.WaitingForPlayers)
         {
             _runtimePanel.SetActive(true);
+            SetRuntimePanelHeight(80f);
             _runtimeStatusText.text = $"Waiting for players: {_displayConnectedPlayers}/{_displayRequiredPlayers}";
         }
         else if (_displayState == GameState.InProgress)
         {
             _runtimePanel.SetActive(true);
+            SetRuntimePanelHeight(80f);
             _runtimeStatusText.text = $"Time: {Mathf.CeilToInt(_displayMatchTimer)}";
         }
         else if (_displayState == GameState.ShowingResults)
         {
             _runtimePanel.SetActive(true);
+            SetRuntimePanelHeight(220f);
             _runtimeStatusText.text = _displayResultsText;
         }
+    }
+
+    private void SetRuntimePanelHeight(float height)
+    {
+        RectTransform panelRect = _runtimePanel.GetComponent<RectTransform>();
+        panelRect.sizeDelta = new Vector2(panelRect.sizeDelta.x, height);
     }
 }

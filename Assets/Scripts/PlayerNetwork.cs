@@ -13,6 +13,7 @@ public class PlayerNetwork : NetworkBehaviour
     public readonly SyncVar<int> HP = new(MaxHP);
     public readonly SyncVar<string> Nickname = new("Player");
     public readonly SyncVar<bool> IsAlive = new(true);
+    public readonly SyncVar<int> Score = new(0);
 
     [SerializeField] private TMP_Text _hpText;
     [SerializeField] private TMP_Text _nicknameText;
@@ -104,6 +105,25 @@ public class PlayerNetwork : NetworkBehaviour
             return;
 
         HP.Value = Mathf.Min(MaxHP, HP.Value + amount);
+    }
+
+    public void AddScoreServer(int amount)
+    {
+        if (!base.IsServerInitialized)
+            return;
+
+        if (amount <= 0)
+            return;
+
+        Score.Value += amount;
+    }
+
+    public void ResetScoreServer()
+    {
+        if (!base.IsServerInitialized)
+            return;
+
+        Score.Value = 0;
     }
 
     private void DieServer()

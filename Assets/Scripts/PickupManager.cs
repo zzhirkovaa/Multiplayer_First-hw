@@ -10,33 +10,62 @@ public class PickupManager : NetworkBehaviour
 
     private bool _spawnedInitialPickups;
 
+    private void Start()
+    {
+        StartCoroutine(WaitForServerAndSpawnRoutine());
+    }
+
     public override void OnStartServer()
     {
         base.OnStartServer();
 
+        StartServerLogic();
+    }
+
+    private IEnumerator WaitForServerAndSpawnRoutine()
+    {
+        while (!base.IsServerInitialized)
+            yield return null;
+
+        StartServerLogic();
+    }
+
+    private void StartServerLogic()
+    {
         if (_spawnedInitialPickups)
             return;
 
-        _spawnedInitialPickups = true;
-        SpawnAllPickups();
+        if (SpawnAllPickups())
+            _spawnedInitialPickups = true;
     }
 
-    private void SpawnAllPickups()
+    private bool SpawnAllPickups()
     {
         if (_healthPickupPrefab == null)
-            return;
+        {
+            Debug.LogWarning("[PickupManager] Health pickup prefab is not assigned.");
+            return false;
+        }
 
         Transform[] spawnPoints = GetSpawnPoints();
         if (spawnPoints == null)
-            return;
+        {
+            Debug.LogWarning("[PickupManager] No pickup spawn points found.");
+            return false;
+        }
 
+        int spawnedCount = 0;
         foreach (Transform spawnPoint in spawnPoints)
         {
             if (spawnPoint == null)
                 continue;
 
             SpawnPickup(spawnPoint.position);
+            spawnedCount++;
         }
+
+        Debug.Log($"[PickupManager] Spawned {spawnedCount} health pickups.");
+        return spawnedCount > 0;
     }
 
     private Transform[] GetSpawnPoints()

@@ -36,7 +36,31 @@ public class Projectile : NetworkBehaviour
         if (target.OwnerId == _ownerId)
             return;
 
+        bool wasAlive = target.IsAlive.Value;
         target.TakeDamage(_damage);
+
+        if (wasAlive && !target.IsAlive.Value)
+            AwardKillScore();
+
         ServerManager.Despawn(gameObject);
+    }
+
+    private void AwardKillScore()
+    {
+        foreach (var connection in ServerManager.Clients.Values)
+        {
+            foreach (NetworkObject networkObject in connection.Objects)
+            {
+                PlayerNetwork player = networkObject.GetComponent<PlayerNetwork>();
+                if (player == null)
+                    continue;
+
+                if (player.OwnerId != _ownerId)
+                    continue;
+
+                player.AddScoreServer(1);
+                return;
+            }
+        }
     }
 }

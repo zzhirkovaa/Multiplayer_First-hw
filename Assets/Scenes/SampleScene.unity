@@ -974,6 +974,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1312352244, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 155.09998
+      objectReference: {fileID: 0}
+    - target: {fileID: 1312352244, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -52.69995
+      objectReference: {fileID: 0}
     - target: {fileID: 7443408887813606049, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_LocalPosition.x
       value: -47.63708
@@ -1109,7 +1117,7 @@ MonoBehaviour:
   _latencySimulator:
     _enabled: 0
     _simulateHost: 1
-    _latency: 200
+    _latency: 0
     _outOfOrder: 0
     _packetLoss: 0
 --- !u!114 &513478226

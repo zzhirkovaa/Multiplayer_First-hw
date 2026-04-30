@@ -28,7 +28,6 @@ public struct MoveData : IReplicateData
 public struct ReconcileData : IReconcileData
 {
     public Vector3 Position;
-    public float VerticalVelocity;
 
     private uint _tick;
 
@@ -47,19 +46,14 @@ public struct ReconcileData : IReconcileData
     }
 }
 
-[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : NetworkBehaviour
 {
     [SerializeField] private float _speed = 5f;
-    [SerializeField] private float _gravity = -9.81f;
 
-    private CharacterController _characterController;
     private PlayerNetwork _playerNetwork;
-    private float _verticalVelocity;
 
     private void Awake()
     {
-        _characterController = GetComponent<CharacterController>();
         _playerNetwork = GetComponent<PlayerNetwork>();
     }
 
@@ -101,8 +95,7 @@ public class PlayerMovement : NetworkBehaviour
     {
         ReconcileData reconcileData = new ReconcileData
         {
-            Position = transform.position,
-            VerticalVelocity = _verticalVelocity
+            Position = transform.position
         };
 
         Reconcile(reconcileData);
@@ -116,34 +109,20 @@ public class PlayerMovement : NetworkBehaviour
         bool canMove = _playerNetwork == null || _playerNetwork.IsAlive.Value;
         canMove = canMove && IsMatchInProgress();
         Vector3 move = canMove
-            ? GetCameraRelativeMove(moveData.Horizontal, moveData.Vertical)
+            ? new Vector3(moveData.Horizontal, 0f, moveData.Vertical).normalized * _speed
             : Vector3.zero;
 
-        _verticalVelocity += _gravity * tickDelta;
-        move.y = _verticalVelocity;
-
-        _characterController.Move(move * tickDelta);
-
-        if (_characterController.isGrounded && _verticalVelocity < 0f)
-        {
-            _verticalVelocity = 0f;
-        }
+        transform.position += move * tickDelta;
     }
 
     [Reconcile]
     private void Reconcile(ReconcileData reconcileData, Channel channel = Channel.Unreliable)
     {
-        bool wasEnabled = _characterController.enabled;
-        _characterController.enabled = false;
         transform.position = reconcileData.Position;
-        _characterController.enabled = wasEnabled;
-
-        _verticalVelocity = reconcileData.VerticalVelocity;
     }
 
     public void ResetMotion()
     {
-        _verticalVelocity = 0f;
     }
 
     private bool CanMove()
@@ -157,24 +136,4 @@ public class PlayerMovement : NetworkBehaviour
         return GameManager.Instance == null || GameManager.Instance.IsMatchInProgress;
     }
 
-    private Vector3 GetCameraRelativeMove(float horizontal, float vertical)
-    {
-        Camera camera = Camera.main;
-
-        if (camera == null)
-        {
-            return new Vector3(horizontal, 0f, vertical).normalized * _speed;
-        }
-
-        Vector3 forward = camera.transform.forward;
-        Vector3 right = camera.transform.right;
-
-        forward.y = 0f;
-        right.y = 0f;
-
-        forward.Normalize();
-        right.Normalize();
-
-        return (forward * vertical + right * horizontal).normalized * _speed;
-    }
 }

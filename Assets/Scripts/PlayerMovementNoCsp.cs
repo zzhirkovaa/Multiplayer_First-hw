@@ -1,19 +1,14 @@
 using FishNet.Object;
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
 public class PlayerMovementNoCsp : NetworkBehaviour
 {
     [SerializeField] private float _speed = 5f;
-    [SerializeField] private float _gravity = -9.81f;
 
-    private CharacterController _characterController;
     private PlayerNetwork _playerNetwork;
-    private float _verticalVelocity;
 
     private void Awake()
     {
-        _characterController = GetComponent<CharacterController>();
         _playerNetwork = GetComponent<PlayerNetwork>();
     }
 
@@ -23,6 +18,9 @@ public class PlayerMovementNoCsp : NetworkBehaviour
             return;
 
         if (!CanMove())
+            return;
+
+        if (GameManager.Instance != null && !GameManager.Instance.IsMatchInProgress)
             return;
 
         float horizontal = Input.GetAxisRaw("Horizontal");
@@ -40,16 +38,11 @@ public class PlayerMovementNoCsp : NetworkBehaviour
         if (!CanMove())
             return;
 
-        float delta = Time.deltaTime;
+        if (GameManager.Instance != null && !GameManager.Instance.IsMatchInProgress)
+            return;
+
         Vector3 move = new Vector3(horizontal, 0f, vertical).normalized * _speed;
-
-        _verticalVelocity += _gravity * delta;
-        move.y = _verticalVelocity;
-
-        _characterController.Move(move * delta);
-
-        if (_characterController.isGrounded && _verticalVelocity < 0f)
-            _verticalVelocity = 0f;
+        transform.position += move * Time.deltaTime;
     }
 
     private bool CanMove()
@@ -61,6 +54,5 @@ public class PlayerMovementNoCsp : NetworkBehaviour
 
     public void ResetMotion()
     {
-        _verticalVelocity = 0f;
     }
 }
