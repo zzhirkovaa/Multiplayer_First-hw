@@ -735,6 +735,7 @@ MonoBehaviour:
   - {fileID: 7032257052698213324}
   - {fileID: -3221673585330095088}
   - {fileID: 8257275848392556780}
+  - {fileID: -6981818999429751041}
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects: []
   RuntimeParentNetworkBehaviour: {fileID: 0}
@@ -745,7 +746,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584242101192255523
+  _initializedTimestamp: -8584240690940876710
 --- !u!114 &8257275848392556780
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -804,8 +805,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4fa1b6e8d453cc74aaa7a139d562d4e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementNoCsp
-  _componentIndexCache: 255
+  _componentIndexCache: 7
   _addedNetworkObject: {fileID: 3696633680114309926}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 3696633680114309926}
   _speed: 5
   _gravity: -9.81
