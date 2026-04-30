@@ -1,10 +1,21 @@
 using FishNet.Connection;
+using FishNet;
+using FishNet.Broadcast;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using FishNet.Transporting;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+
+public struct GameStateBroadcast : IBroadcast
+{
+    public int State;
+    public int ConnectedPlayers;
+    public int RequiredPlayers;
+    public float MatchTimer;
+    public string ResultsText;
+}
 
 public class GameManager : NetworkBehaviour
 {
@@ -23,6 +34,13 @@ public class GameManager : NetworkBehaviour
     private bool _serverEventsSubscribed;
     private GameObject _runtimePanel;
     private TMP_Text _runtimeStatusText;
+    private GameState _displayState = GameState.WaitingForPlayers;
+    private int _displayConnectedPlayers;
+    private int _displayRequiredPlayers = 2;
+    private float _displayMatchTimer = 60f;
+    private string _displayResultsText = "Match ended. Returning to lobby...";
+    private float _nextTimerBroadcastTime;
+    private bool _clientBroadcastRegistered;
 
     public enum GameState
     {
@@ -34,11 +52,11 @@ public class GameManager : NetworkBehaviour
     private void Awake()
     {
         Instance = this;
-        Debug.Log("[GameManager] Awake. Lobby manager is loaded.");
-
         CurrentState.OnChange += OnGameStateChanged;
         ConnectedPlayers.OnChange += OnConnectedPlayersChanged;
         MatchTimer.Value = _matchDuration;
+        _displayRequiredPlayers = _requiredPlayers;
+        CopyNetworkStateToDisplayState();
 
         CreateRuntimeUi();
         RefreshRuntimeUi();
@@ -51,6 +69,8 @@ public class GameManager : NetworkBehaviour
 
         CurrentState.OnChange -= OnGameStateChanged;
         ConnectedPlayers.OnChange -= OnConnectedPlayersChanged;
+
+        UnregisterClientBroadcast();
     }
 
     public override void OnStartServer()
@@ -64,10 +84,27 @@ public class GameManager : NetworkBehaviour
     {
         base.OnStartNetwork();
 
+        RegisterClientBroadcast();
+
         if (base.IsServerInitialized)
             StartServerLogic();
 
         RefreshRuntimeUi();
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+
+        RegisterClientBroadcast();
+        RefreshRuntimeUi();
+    }
+
+    public override void OnStopClient()
+    {
+        UnregisterClientBroadcast();
+
+        base.OnStopClient();
     }
 
     public void StartServerLogic()
@@ -96,6 +133,12 @@ public class GameManager : NetworkBehaviour
     {
         if (!base.IsServerInitialized)
             return;
+
+        if (Time.time >= _nextTimerBroadcastTime)
+        {
+            _nextTimerBroadcastTime = Time.time + 0.25f;
+            SendGameStateBroadcast();
+        }
 
         if (CurrentState.Value != GameState.InProgress)
             return;
@@ -129,12 +172,14 @@ public class GameManager : NetworkBehaviour
     private void UpdateConnectedPlayers()
     {
         ConnectedPlayers.Value = base.ServerManager.Clients.Count;
+        SendGameStateBroadcast();
     }
 
     private void StartMatch()
     {
         MatchTimer.Value = _matchDuration;
         CurrentState.Value = GameState.InProgress;
+        SendGameStateBroadcast();
 
         Debug.Log("[Server] Match started!");
     }
@@ -142,6 +187,7 @@ public class GameManager : NetworkBehaviour
     private void EndMatch()
     {
         CurrentState.Value = GameState.ShowingResults;
+        SendGameStateBroadcast();
         Debug.Log("[Server] Match ended! Showing results...");
 
         Invoke(nameof(ResetToLobby), _resultsDuration);
@@ -149,8 +195,11 @@ public class GameManager : NetworkBehaviour
 
     private void ResetToLobby()
     {
+        ResetPlayersForNextMatch();
+
         MatchTimer.Value = _matchDuration;
         CurrentState.Value = GameState.WaitingForPlayers;
+        SendGameStateBroadcast();
 
         Debug.Log("[Server] Lobby reset. Waiting for players...");
 
@@ -158,16 +207,94 @@ public class GameManager : NetworkBehaviour
             StartMatch();
     }
 
+    private void ResetPlayersForNextMatch()
+    {
+        if (!base.IsServerInitialized)
+            return;
+
+        foreach (NetworkConnection connection in base.ServerManager.Clients.Values)
+        {
+            foreach (NetworkObject networkObject in connection.Objects)
+            {
+                PlayerNetwork playerNetwork = networkObject.GetComponent<PlayerNetwork>();
+                if (playerNetwork == null)
+                    continue;
+
+                Vector3 spawnPosition = SpawnManager.Instance != null
+                    ? SpawnManager.Instance.GetSpawnPosition()
+                    : Vector3.zero;
+
+                playerNetwork.ResetPlayerServer(spawnPosition);
+            }
+        }
+    }
+
     private void OnGameStateChanged(GameState oldValue, GameState newValue, bool asServer)
     {
         Debug.Log($"Game state changed: {oldValue} -> {newValue}");
+        CopyNetworkStateToDisplayState();
         RefreshRuntimeUi();
     }
 
     private void OnConnectedPlayersChanged(int oldValue, int newValue, bool asServer)
     {
         Debug.Log($"Connected players: {newValue}/{_requiredPlayers}");
+        CopyNetworkStateToDisplayState();
         RefreshRuntimeUi();
+    }
+
+    private void OnGameStateBroadcast(GameStateBroadcast message, Channel channel)
+    {
+        _displayState = (GameState)message.State;
+        _displayConnectedPlayers = message.ConnectedPlayers;
+        _displayRequiredPlayers = message.RequiredPlayers;
+        _displayMatchTimer = message.MatchTimer;
+        _displayResultsText = message.ResultsText;
+
+        RefreshRuntimeUi();
+    }
+
+    private void RegisterClientBroadcast()
+    {
+        if (_clientBroadcastRegistered || InstanceFinder.ClientManager == null)
+            return;
+
+        InstanceFinder.ClientManager.RegisterBroadcast<GameStateBroadcast>(OnGameStateBroadcast);
+        _clientBroadcastRegistered = true;
+    }
+
+    private void UnregisterClientBroadcast()
+    {
+        if (!_clientBroadcastRegistered || InstanceFinder.ClientManager == null)
+            return;
+
+        InstanceFinder.ClientManager.UnregisterBroadcast<GameStateBroadcast>(OnGameStateBroadcast);
+        _clientBroadcastRegistered = false;
+    }
+
+    private void SendGameStateBroadcast()
+    {
+        if (!base.IsServerInitialized || base.ServerManager == null || !base.ServerManager.Started)
+            return;
+
+        GameStateBroadcast message = new GameStateBroadcast
+        {
+            State = (int)CurrentState.Value,
+            ConnectedPlayers = ConnectedPlayers.Value,
+            RequiredPlayers = _requiredPlayers,
+            MatchTimer = MatchTimer.Value,
+            ResultsText = "Match ended. Returning to lobby..."
+        };
+
+        base.ServerManager.Broadcast(message, false, Channel.Reliable);
+    }
+
+    private void CopyNetworkStateToDisplayState()
+    {
+        _displayState = CurrentState.Value;
+        _displayConnectedPlayers = ConnectedPlayers.Value;
+        _displayRequiredPlayers = _requiredPlayers;
+        _displayMatchTimer = MatchTimer.Value;
     }
 
     private void CreateRuntimeUi()
@@ -218,20 +345,20 @@ public class GameManager : NetworkBehaviour
         if (_runtimeStatusText == null || _runtimePanel == null)
             return;
 
-        if (CurrentState.Value == GameState.WaitingForPlayers)
+        if (_displayState == GameState.WaitingForPlayers)
         {
             _runtimePanel.SetActive(true);
-            _runtimeStatusText.text = $"Waiting for players: {ConnectedPlayers.Value}/{_requiredPlayers}";
+            _runtimeStatusText.text = $"Waiting for players: {_displayConnectedPlayers}/{_displayRequiredPlayers}";
         }
-        else if (CurrentState.Value == GameState.InProgress)
+        else if (_displayState == GameState.InProgress)
         {
             _runtimePanel.SetActive(true);
-            _runtimeStatusText.text = $"Time: {Mathf.CeilToInt(MatchTimer.Value)}";
+            _runtimeStatusText.text = $"Time: {Mathf.CeilToInt(_displayMatchTimer)}";
         }
-        else if (CurrentState.Value == GameState.ShowingResults)
+        else if (_displayState == GameState.ShowingResults)
         {
             _runtimePanel.SetActive(true);
-            _runtimeStatusText.text = "Match ended. Returning to lobby...";
+            _runtimeStatusText.text = _displayResultsText;
         }
     }
 }

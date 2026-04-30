@@ -1,4 +1,4 @@
-using System.Collections;
+п»їusing System.Collections;
 using FishNet.Object;
 using TMPro;
 using UnityEngine;
@@ -29,6 +29,9 @@ public class PlayerHUD : NetworkBehaviour
         if (_playerNetwork != null)
             _playerNetwork.IsAlive.OnChange += OnIsAliveChanged;
 
+        if (_playerShooting != null)
+            _playerShooting.CurrentAmmo.OnChange += OnAmmoChanged;
+
         UpdateAmmoText();
         SetRespawnText(string.Empty);
     }
@@ -37,6 +40,9 @@ public class PlayerHUD : NetworkBehaviour
     {
         if (_playerNetwork != null)
             _playerNetwork.IsAlive.OnChange -= OnIsAliveChanged;
+
+        if (_playerShooting != null)
+            _playerShooting.CurrentAmmo.OnChange -= OnAmmoChanged;
 
         if (_respawnCountdownCoroutine != null)
         {
@@ -58,9 +64,12 @@ public class PlayerHUD : NetworkBehaviour
     private void UpdateAmmoText()
     {
         if (_ammoText != null && _playerShooting != null)
-        {
-            _ammoText.text = $"Патроны: {_playerShooting.CurrentAmmo.Value}";
-        }
+            _ammoText.text = $"РџР°С‚СЂРѕРЅС‹: {_playerShooting.CurrentAmmo.Value}";
+    }
+
+    private void OnAmmoChanged(int oldValue, int newValue, bool asServer)
+    {
+        UpdateAmmoText();
     }
 
     private void OnIsAliveChanged(bool oldValue, bool newValue, bool asServer)
@@ -89,7 +98,7 @@ public class PlayerHUD : NetworkBehaviour
 
         while (remainingTime > 0f)
         {
-            SetRespawnText($"Возрождение через: {Mathf.CeilToInt(remainingTime)}");
+            SetRespawnText($"Р’РѕР·СЂРѕР¶РґРµРЅРёРµ С‡РµСЂРµР·: {Mathf.CeilToInt(remainingTime)}");
             remainingTime -= Time.deltaTime;
             yield return null;
         }

@@ -60,6 +60,13 @@ public class PlayerNetwork : NetworkBehaviour
         base.OnStopNetwork();
     }
 
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+
+        ResetPlayerServer(GetSpawnPosition(), false);
+    }
+
     [ServerRpc]
     public void SetNicknameServerRpc(string nickname)
     {
@@ -120,18 +127,34 @@ public class PlayerNetwork : NetworkBehaviour
     {
         yield return new WaitForSeconds(RespawnDelay);
 
-        Vector3 respawnPosition = SpawnManager.Instance != null
-            ? SpawnManager.Instance.GetSpawnPosition()
-            : Vector3.zero;
+        Vector3 respawnPosition = GetSpawnPosition();
+        ResetPlayerServer(respawnPosition, true, false);
 
-        TeleportLocal(respawnPosition);
+        _respawnCoroutine = null;
+    }
+
+    public void ResetPlayerServer(Vector3 position, bool notifyOwner = true, bool stopRespawnRoutine = true)
+    {
+        if (!base.IsServerInitialized)
+            return;
+
+        if (stopRespawnRoutine && _respawnCoroutine != null)
+        {
+            StopCoroutine(_respawnCoroutine);
+            _respawnCoroutine = null;
+        }
+
+        TeleportLocal(position);
 
         HP.Value = MaxHP;
         IsAlive.Value = true;
 
-        RespawnOwnerTargetRpc(base.Owner, respawnPosition);
+        PlayerShooting shooting = GetComponent<PlayerShooting>();
+        if (shooting != null)
+            shooting.ResetAmmoServer();
 
-        _respawnCoroutine = null;
+        if (notifyOwner && base.Owner.IsValid)
+            RespawnOwnerTargetRpc(base.Owner, position);
     }
 
     [TargetRpc]
@@ -187,6 +210,10 @@ public class PlayerNetwork : NetworkBehaviour
         if (movement != null)
             movement.ResetMotion();
 
+        PlayerMovementNoCsp movementNoCsp = GetComponent<PlayerMovementNoCsp>();
+        if (movementNoCsp != null)
+            movementNoCsp.ResetMotion();
+
         CharacterController characterController = GetComponent<CharacterController>();
         if (characterController != null)
             characterController.enabled = false;
@@ -205,7 +232,14 @@ public class PlayerNetwork : NetworkBehaviour
         foreach (Renderer rendererToHide in _renderersToHideOnDeath)
         {
             if (rendererToHide != null)
-                rendererToHide.enabled = visible;
+            rendererToHide.enabled = visible;
         }
+    }
+
+    private Vector3 GetSpawnPosition()
+    {
+        return SpawnManager.Instance != null
+            ? SpawnManager.Instance.GetSpawnPosition()
+            : Vector3.zero;
     }
 }

@@ -5,6 +5,7 @@ public class SpawnManager : MonoBehaviour
     public static SpawnManager Instance;
 
     [SerializeField] private Transform[] _spawnPoints;
+    private int _nextSpawnIndex;
 
     private void Awake()
     {
@@ -16,7 +17,9 @@ public class SpawnManager : MonoBehaviour
         if (_spawnPoints == null || _spawnPoints.Length == 0)
             return Vector3.zero;
 
-        int idx = Random.Range(0, _spawnPoints.Length);
-        return _spawnPoints[idx].position;
+        Transform spawnPoint = _spawnPoints[_nextSpawnIndex % _spawnPoints.Length];
+        _nextSpawnIndex++;
+
+        return spawnPoint.position;
     }
 }

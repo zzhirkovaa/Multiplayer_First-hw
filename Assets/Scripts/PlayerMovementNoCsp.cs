@@ -58,4 +58,9 @@ public class PlayerMovementNoCsp : NetworkBehaviour
         bool matchInProgress = GameManager.Instance == null || GameManager.Instance.IsMatchInProgress;
         return alive && matchInProgress;
     }
+
+    public void ResetMotion()
+    {
+        _verticalVelocity = 0f;
+    }
 }

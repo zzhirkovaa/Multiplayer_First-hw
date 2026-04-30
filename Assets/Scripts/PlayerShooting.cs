@@ -22,7 +22,16 @@ public class PlayerShooting : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
+        ResetAmmoServer();
+    }
+
+    public void ResetAmmoServer()
+    {
+        if (!base.IsServerInitialized)
+            return;
+
         CurrentAmmo.Value = _maxAmmo;
+        _lastShotTime = 0f;
     }
 
     private void Update()
